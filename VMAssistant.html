@@ -137,7 +137,7 @@
       .filter(s => s.length > 0);
   }
 
-  // CSV upload with PapaParse to extract 'Title' column for vulnerability list
+  // CSV upload with PapaParse to extract 'Title', CVE IDs, and CVSS scores
   document.getElementById('csv-upload').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -151,19 +151,29 @@
           return;
         }
 
-        // Extract vulnerability titles and CVE IDs
+        // Extract vulnerability titles, CVE IDs, and CVSS scores
         const extractedTitles = [];
         const extractedCves = [];
+        const cveScoreMap = {};
         results.data.forEach(row => {
+          let cveId = null;
           if (row['Title']) {
             extractedTitles.push(row['Title'].trim());
             // Try to extract CVE from Title if present
             const cveMatch = row['Title'].match(/CVE-\d{4}-\d{4,7}/i);
-            if (cveMatch) extractedCves.push(cveMatch[0].toUpperCase());
-          } else if (row['Vulnerability Key']) {
+            if (cveMatch) cveId = cveMatch[0].toUpperCase();
+          }
+          if (!cveId && row['Vulnerability Key']) {
             const rawKey = row['Vulnerability Key'].toString().toLowerCase();
             const cveMatch = rawKey.match(/cve-\d{4}-\d{4,7}/);
-            if (cveMatch) extractedCves.push(cveMatch[0].toUpperCase());
+            if (cveMatch) cveId = cveMatch[0].toUpperCase();
+          }
+          if (cveId) {
+            extractedCves.push(cveId);
+            // Store CVSS score if present
+            if (row['CVSS Score'] && !isNaN(parseFloat(row['CVSS Score']))) {
+              cveScoreMap[cveId] = parseFloat(row['CVSS Score']);
+            }
           }
         });
 
@@ -175,6 +185,7 @@
         }
 
         window.vulnerabilityTitles = uniqueTitles;
+        window.cveScoreMap = cveScoreMap;
         document.getElementById('cve-ids').value = uniqueCves.join(', ');
         document.getElementById('multiple-cves').checked = uniqueCves.length > 1;
         scheduleGenerate();
@@ -346,8 +357,14 @@
 
   let highestScore = null, highestIndex = -1;
   let scores = new Array(cves.length).fill(null);
+  let useCsvScores = typeof window.cveScoreMap === 'object' && window.cveScoreMap !== null;
   for (let i = 0; i < cves.length; ++i) {
-    const score = await fetchCveScore(cves[i]);
+    let score = null;
+    if (useCsvScores && window.cveScoreMap[cves[i]] !== undefined) {
+      score = window.cveScoreMap[cves[i]];
+    } else {
+      score = await fetchCveScore(cves[i]);
+    }
     scores[i] = score;
     if (score !== null && (highestScore === null || score > highestScore)) {
       highestScore = score;
