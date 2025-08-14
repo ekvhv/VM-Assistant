@@ -16,12 +16,26 @@
     overflow: auto;
     white-space: normal;
   }
+  .version-badge {
+    position: absolute;
+    top: 12px;
+    right: 18px;
+    font-size: 0.95rem;
+    color: #51626F;
+    background: #f3f4f6;
+    border-radius: 6px;
+    padding: 2px 8px;
+    opacity: 0.7;
+    z-index: 10;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body class="h-full flex flex-col items-center justify-start py-6 px-4 min-h-screen">
 <div class="card w-full max-w-4xl bg-base-100 shadow-xl">
   <div class="card-body space-y-4">
     <h2 class="card-title text-2xl font-bold">Vulnerability Ticket Generator</h2>
+    <span class="version-badge">v1.1.1</span>
 
     <!-- Form -->
     <form id="ticket-form" class="space-y-4" onsubmit="event.preventDefault();">
