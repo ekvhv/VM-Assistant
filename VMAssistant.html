@@ -193,12 +193,22 @@
                 COPY
               </button>
             </div>
-            <textarea
-              readonly
+            <input
               id="ivanti-problem-summary"
-              class="textarea textarea-bordered w-full font-mono"
-              rows="2"
-            ></textarea>
+              type="text"
+              class="input input-bordered w-full font-mono"
+              spellcheck="false"
+              aria-describedby="ivanti-summary-char-count"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            />
+            <p
+              id="ivanti-summary-char-count"
+              class="text-sm text-gray-600 mt-1"
+            >
+              Characters: <span id="ivanti-summary-char-num">0</span>/101
+            </p>
           </div>
 
           <div class="flex flex-col space-y-1 mb-4">
@@ -301,11 +311,33 @@
 
     <script>
       // Helper to parse CVE IDs from input text safely (splits on comma/space, trims, removes trailing punctuation)
+      // Arrays to store manual and CSV CVEs
+      let manualCveArray = [];
+      let csvCveArray = [];
+
       function parseCveIds(text) {
+        // Normalize CVE IDs to uppercase for consistent lookups
         return text
           .split(/[\s,]+/)
-          .map((s) => s.trim())
+          .map((s) => s.trim().toUpperCase())
           .filter((s) => s.length > 0);
+      }
+
+      function updateCveInputField() {
+        // Merge and deduplicate manual and CSV CVEs
+        const merged = Array.from(new Set([...csvCveArray, ...manualCveArray]));
+        document.getElementById("cve-ids").value = merged.join(", ");
+        document.getElementById("multiple-cves").checked = merged.length > 1;
+      }
+
+      function handleManualCveEdit() {
+        // On manual edit, treat input field as the full source of truth for CVEs
+        const inputCves = parseCveIds(document.getElementById("cve-ids").value);
+        manualCveArray = inputCves;
+        csvCveArray = [];
+        document.getElementById("multiple-cves").checked =
+          manualCveArray.length > 1;
+        scheduleGenerate();
       }
 
       // CSV upload with PapaParse to extract 'Title', CVE IDs, and CVSS scores
@@ -364,9 +396,13 @@
 
             window.vulnerabilityTitles = uniqueTitles;
             window.cveScoreMap = cveScoreMap;
-            document.getElementById("cve-ids").value = uniqueCves.join(", ");
-            document.getElementById("multiple-cves").checked =
-              uniqueCves.length > 1;
+            csvCveArray = uniqueCves;
+            // Build a global CVE->Title map for later use
+            window.cveTitleMapGlobal = {};
+            uniqueCves.forEach((cve, idx) => {
+              window.cveTitleMapGlobal[cve] = uniqueTitles[idx] || cve;
+            });
+            updateCveInputField();
             scheduleGenerate();
           },
           error: function (err) {
@@ -459,6 +495,16 @@
         "ivanti-problem-number"
       );
       const ivantiSummaryEl = document.getElementById("ivanti-problem-summary");
+      const ivantiSummaryCharNum = document.getElementById(
+        "ivanti-summary-char-num"
+      );
+      // Ivanti Problem Summary char count and red highlight
+      ivantiSummaryEl.addEventListener("input", () => {
+        const len = ivantiSummaryEl.value.length;
+        ivantiSummaryCharNum.textContent = len;
+        if (len > 101) ivantiSummaryEl.classList.add("text-red-limit");
+        else ivantiSummaryEl.classList.remove("text-red-limit");
+      });
       const urgencyEl = document.getElementById("urgency");
       const rapid7QueryEl = document.getElementById("rapid7-query-name");
       const remediationNameInput = document.getElementById(
@@ -532,7 +578,6 @@
         debounceTimer = setTimeout(generateAllText, 400);
       }
       [
-        cveInput,
         multipleCheckbox,
         appNameInput,
         vulnDescInput,
@@ -541,6 +586,9 @@
         el.addEventListener("input", scheduleGenerate);
         el.addEventListener("change", scheduleGenerate);
       });
+      // Special handler for manual CVE input edits
+      cveInput.addEventListener("input", handleManualCveEdit);
+      cveInput.addEventListener("change", handleManualCveEdit);
 
       // Main generation logic
       async function generateAllText() {
@@ -552,19 +600,18 @@
         remediationCharNum.textContent = "0";
         descriptionEl.innerHTML = "";
 
-        const cveRaw = cveInput.value.trim();
+        // Use merged CVEs from both arrays
+        const mergedCves = Array.from(
+          new Set([...csvCveArray, ...manualCveArray])
+        );
         const multipleCvesChecked = multipleCheckbox.checked;
         const appName = appNameInput.value.trim();
         const vulnDescription = vulnDescInput.value.trim();
         const ivantiNum = ivantiProblemInput.value.trim();
 
-        if (!cveRaw || !appName) return;
+        if (mergedCves.length === 0 || !appName) return;
 
-        let cves = parseCveIds(cveRaw);
-        if (cves.length === 0) {
-          alert("No valid CVE IDs found in input.");
-          return;
-        }
+        let cves = mergedCves;
 
         ivantiSummaryEl.value = "Fetching CVSS scores...";
         urgencyEl.textContent = "";
@@ -579,10 +626,12 @@
           typeof window.cveScoreMap === "object" && window.cveScoreMap !== null;
         for (let i = 0; i < cves.length; ++i) {
           let score = null;
-          if (useCsvScores && window.cveScoreMap[cves[i]] !== undefined) {
-            score = window.cveScoreMap[cves[i]];
+          // Always use uppercase for lookup
+          const cveKey = cves[i].toUpperCase();
+          if (useCsvScores && window.cveScoreMap[cveKey] !== undefined) {
+            score = window.cveScoreMap[cveKey];
           } else {
-            score = await fetchCveScore(cves[i]);
+            score = await fetchCveScore(cveKey);
           }
           scores[i] = score;
           if (
@@ -639,30 +688,25 @@
           : remediationProjectField;
 
         ivantiSummaryEl.value = ivantiSummary;
+        // Update char count and red highlight
+        const ivantiLen = ivantiSummaryEl.value.length;
+        ivantiSummaryCharNum.textContent = ivantiLen;
+        if (ivantiLen > 101) ivantiSummaryEl.classList.add("text-red-limit");
+        else ivantiSummaryEl.classList.remove("text-red-limit");
         urgencyEl.textContent = urgencyText;
         rapid7QueryEl.textContent = rapid7Query;
         remediationNameInput.value = remediationName;
         remediationNameInput.dispatchEvent(new Event("input"));
 
         let vulnListHtml;
-        if (
-          window.vulnerabilityTitles &&
-          window.vulnerabilityTitles.length > 0
-        ) {
-          vulnListHtml = window.vulnerabilityTitles
-            .map(
-              (title) =>
-                `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${title}</span>`
-            )
-            .join("<br>");
-        } else {
-          vulnListHtml = cves
-            .map(
-              (cve) =>
-                `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${cve}</span>`
-            )
-            .join("<br>");
-        }
+        // Use global CVE->Title map if available
+        const cveTitleMap = window.cveTitleMapGlobal || {};
+        vulnListHtml = cves
+          .map((cve) => {
+            const title = cveTitleMap[cve] || cve;
+            return `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${title}</span>`;
+          })
+          .join("<br>");
 
         // Ensure the description HTML is set correctly
         const descriptionHTML = `
