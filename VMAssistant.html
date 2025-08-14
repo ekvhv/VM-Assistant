@@ -1,452 +1,671 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-base-200">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Vulnerability Ticket Generator - Ivanti & Rapid7</title>
-<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<style>
-  .text-red-limit { color: #dc2626; font-weight: 700; }
-  #description[contenteditable], #description {
-    background: #fff;
-    border: 1px solid #ccc;
-    min-height: 250px;
-    overflow: auto;
-    white-space: normal;
-  }
-  .version-badge {
-    position: absolute;
-    top: 12px;
-    right: 18px;
-    font-size: 0.95rem;
-    color: #51626F;
-    background: #f3f4f6;
-    border-radius: 6px;
-    padding: 2px 8px;
-    opacity: 0.7;
-    z-index: 10;
-    pointer-events: none;
-  }
-</style>
-</head>
-<body class="h-full flex flex-col items-center justify-start py-6 px-4 min-h-screen">
-<div class="card w-full max-w-4xl bg-base-100 shadow-xl">
-  <div class="card-body space-y-4">
-    <h2 class="card-title text-2xl font-bold">Vulnerability Ticket Generator</h2>
-    <span class="version-badge">v1.1.1</span>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      VM Assistant - Vulnerability Ticket Generator - For Ivanti & Rapid7
+    </title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@5"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+      .text-red-limit {
+        color: #dc2626;
+        font-weight: 700;
+      }
+      #description[contenteditable],
+      #description {
+        background: #fff;
+        border: 1px solid #ccc;
+        min-height: 250px;
+        overflow: auto;
+        white-space: normal;
+      }
+      .version-badge {
+        position: absolute;
+        top: 12px;
+        right: 18px;
+        font-size: 0.95rem;
+        color: #51626f;
+        background: #f3f4f6;
+        border-radius: 6px;
+        padding: 2px 8px;
+        opacity: 0.7;
+        z-index: 10;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body
+    class="h-full flex flex-col items-center justify-start py-6 px-4 min-h-screen"
+  >
+    <div class="card w-full max-w-4xl bg-base-100 shadow-xl">
+      <div class="card-body space-y-4">
+        <h2 class="card-title text-2xl font-bold">
+          Vulnerability Management and Ticket Generator
+        </h2>
+        <span class="version-badge">v1.1.1</span>
 
-    <!-- Form -->
-    <form id="ticket-form" class="space-y-4" onsubmit="event.preventDefault();">
-      <!-- CVE IDs input + multiple toggle -->
-      <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
-        <div class="flex-grow">
-          <label class="label mb-1">
-            <span class="label-text font-semibold">CVE ID(s)</span>
-          </label>
-          <input id="cve-ids" type="text" placeholder="Enter one or multiple CVEs separated by commas or spaces" class="input input-bordered w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <!-- Form -->
+        <form
+          id="ticket-form"
+          class="space-y-4"
+          onsubmit="event.preventDefault();"
+        >
+          <!-- CVE IDs input + multiple toggle -->
+          <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
+            <div class="flex-grow">
+              <label class="label mb-1">
+                <span class="label-text font-semibold">CVE ID(s)</span>
+              </label>
+              <input
+                id="cve-ids"
+                type="text"
+                placeholder="Enter one or multiple CVEs separated by commas or spaces"
+                class="input input-bordered w-full"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
+            <div class="flex items-center space-x-2 mt-2 md:mt-0">
+              <label
+                for="multiple-cves"
+                class="label-text select-none flex items-center cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id="multiple-cves"
+                  class="checkbox mr-2"
+                />
+                Multiple CVEs? (adds "div. ... z.B." forced)
+              </label>
+            </div>
+          </div>
+
+          <!-- CSV upload -->
+          <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
+            <div class="flex-grow">
+              <label class="label mb-1 cursor-pointer">
+                <span class="label-text"
+                  >OR Upload CSV file with CVE IDs (one CVE ID per line)</span
+                >
+                <input
+                  type="file"
+                  id="csv-upload"
+                  accept=".csv,text/csv"
+                  class="file-input file-input-bordered w-full max-w-xs mt-1"
+                />
+              </label>
+              <p class="text-sm text-gray-500 mt-1">
+                Multiple CVE IDs will fetch scores & pick highest risk
+              </p>
+            </div>
+          </div>
+
+          <!-- Application Name -->
+          <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
+            <div class="flex-grow">
+              <label class="label mb-1">
+                <span class="label-text font-semibold"
+                  >Vulnerable Application Name</span
+                >
+              </label>
+              <input
+                id="app-name"
+                type="text"
+                placeholder="Application Name"
+                class="input input-bordered w-full"
+                required
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+            </div>
+          </div>
+
+          <!-- Vulnerability Description (optional) -->
+          <div>
+            <label class="label mb-1">
+              <span class="label-text font-semibold"
+                >Vulnerability Description (optional)</span
+              >
+            </label>
+            <textarea
+              id="vuln-description"
+              placeholder="Enter vulnerability description"
+              class="textarea textarea-bordered w-full"
+              rows="3"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+            ></textarea>
+          </div>
+
+          <!-- Ivanti Problem Number -->
+          <div>
+            <label class="label mb-1">
+              <span class="label-text font-semibold"
+                >Ivanti Problem Number (add only to Remediation Project
+                Name)</span
+              >
+            </label>
+            <input
+              id="ivanti-problem-number"
+              type="text"
+              placeholder="e.g. 1777"
+              class="input input-bordered w-full"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+          </div>
+
+          <!-- Disabled generate button (auto-generate enabled) -->
+          <button type="submit" class="btn btn-primary w-full" disabled>
+            Generate Ticket Text (auto)
+          </button>
+        </form>
+
+        <!-- Outputs Section -->
+        <div class="space-y-6 mt-4">
+          <div class="flex flex-col space-y-1 mb-4">
+            <div class="flex items-center justify-between">
+              <label
+                for="ivanti-problem-summary"
+                class="label-text font-semibold"
+                >Ivanti Problem Summary</label
+              >
+              <button
+                type="button"
+                id="copy-ivanti-summary-btn"
+                class="btn btn-xs btn-outline"
+              >
+                COPY
+              </button>
+            </div>
+            <textarea
+              readonly
+              id="ivanti-problem-summary"
+              class="textarea textarea-bordered w-full font-mono"
+              rows="2"
+            ></textarea>
+          </div>
+
+          <div class="flex flex-col space-y-1 mb-4">
+            <div class="flex items-center justify-between">
+              <label for="urgency" class="label-text font-semibold"
+                >Urgency</label
+              >
+              <button
+                type="button"
+                id="copy-urgency-btn"
+                class="btn btn-xs btn-outline"
+              >
+                COPY
+              </button>
+            </div>
+            <div
+              id="urgency"
+              class="p-2 bg-base-200 rounded w-full font-mono max-w-xs"
+            ></div>
+          </div>
+
+          <div class="flex flex-col space-y-1 mb-4">
+            <div class="flex items-center justify-between">
+              <label for="rapid7-query-name" class="label-text font-semibold"
+                >Rapid7 Query Name</label
+              >
+              <button
+                type="button"
+                id="copy-query-btn"
+                class="btn btn-xs btn-outline"
+              >
+                COPY
+              </button>
+            </div>
+            <div
+              id="rapid7-query-name"
+              class="p-2 bg-base-200 rounded w-full font-mono whitespace-pre-wrap break-words"
+            ></div>
+          </div>
+
+          <div class="flex flex-col space-y-1 mb-4" id="remediation-wrapper">
+            <div class="flex items-center justify-between">
+              <label
+                for="rapid7-remediation-project-name"
+                class="label-text font-semibold"
+                >Rapid7 Remediation Project Name (80 char max)</label
+              >
+              <button
+                type="button"
+                id="copy-remediation-name-btn"
+                class="btn btn-xs btn-outline"
+              >
+                COPY
+              </button>
+            </div>
+            <input
+              id="rapid7-remediation-project-name"
+              type="text"
+              class="input input-bordered w-full font-mono"
+              maxlength="200"
+              spellcheck="false"
+              aria-describedby="remediation-char-count"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+            />
+            <p id="remediation-char-count" class="text-sm text-gray-600 mt-1">
+              Characters: <span id="remediation-char-num">0</span>/80
+            </p>
+          </div>
+
+          <div class="flex flex-col space-y-1 mb-4">
+            <div class="flex items-center justify-between">
+              <label for="description" class="label-text font-semibold"
+                >Description (formatted text)</label
+              >
+              <button
+                type="button"
+                id="copy-description-html-btn"
+                class="btn btn-xs btn-outline"
+              >
+                Copy as formatted text
+              </button>
+            </div>
+            <div
+              id="description"
+              class="p-2 bg-base-200 rounded w-full"
+              contenteditable="false"
+              style="
+                min-height: 250px;
+                background: #fff;
+                border: 1px solid #ccc;
+                overflow: auto;
+              "
+            ></div>
+          </div>
         </div>
-        <div class="flex items-center space-x-2 mt-2 md:mt-0">
-          <label for="multiple-cves" class="label-text select-none flex items-center cursor-pointer">
-            <input type="checkbox" id="multiple-cves" class="checkbox mr-2" />
-            Multiple CVEs? (adds "div. ... z.B." forced)
-          </label>
-        </div>
-      </div>
-
-      <!-- CSV upload -->
-      <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
-        <div class="flex-grow">
-          <label class="label mb-1 cursor-pointer">
-            <span class="label-text">OR Upload CSV file with CVE IDs (one CVE ID per line)</span>
-            <input type="file" id="csv-upload" accept=".csv,text/csv" class="file-input file-input-bordered w-full max-w-xs mt-1" />
-          </label>
-          <p class="text-sm text-gray-500 mt-1">Multiple CVE IDs will fetch scores & pick highest risk</p>
-        </div>
-      </div>
-
-      <!-- Application Name -->
-      <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
-        <div class="flex-grow">
-          <label class="label mb-1">
-            <span class="label-text font-semibold">Vulnerable Application Name</span>
-          </label>
-          <input id="app-name" type="text" placeholder="Application Name" class="input input-bordered w-full" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-        </div>
-      </div>
-
-      <!-- Vulnerability Description (optional) -->
-      <div>
-        <label class="label mb-1">
-          <span class="label-text font-semibold">Vulnerability Description (optional)</span>
-        </label>
-        <textarea id="vuln-description" placeholder="Enter vulnerability description" class="textarea textarea-bordered w-full" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-      </div>
-
-      <!-- Ivanti Problem Number -->
-      <div>
-        <label class="label mb-1">
-          <span class="label-text font-semibold">Ivanti Problem Number (add only to Remediation Project Name)</span>
-        </label>
-        <input id="ivanti-problem-number" type="text" placeholder="e.g. 1777" class="input input-bordered w-full" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-      </div>
-
-      <!-- Disabled generate button (auto-generate enabled) -->
-      <button type="submit" class="btn btn-primary w-full" disabled>Generate Ticket Text (auto)</button>
-    </form>
-
-    <!-- Outputs Section -->
-    <div class="space-y-6 mt-4">
-      <div class="flex flex-col space-y-1 mb-4">
-        <div class="flex items-center justify-between">
-          <label for="ivanti-problem-summary" class="label-text font-semibold">Ivanti Problem Summary</label>
-          <button type="button" id="copy-ivanti-summary-btn" class="btn btn-xs btn-outline">COPY</button>
-        </div>
-        <textarea readonly id="ivanti-problem-summary" class="textarea textarea-bordered w-full font-mono" rows="2"></textarea>
-      </div>
-
-      <div class="flex flex-col space-y-1 mb-4">
-        <div class="flex items-center justify-between">
-          <label for="urgency" class="label-text font-semibold">Urgency</label>
-          <button type="button" id="copy-urgency-btn" class="btn btn-xs btn-outline">COPY</button>
-        </div>
-        <div id="urgency" class="p-2 bg-base-200 rounded w-full font-mono max-w-xs"></div>
-      </div>
-
-      <div class="flex flex-col space-y-1 mb-4">
-        <div class="flex items-center justify-between">
-          <label for="rapid7-query-name" class="label-text font-semibold">Rapid7 Query Name</label>
-          <button type="button" id="copy-query-btn" class="btn btn-xs btn-outline">COPY</button>
-        </div>
-        <div id="rapid7-query-name" class="p-2 bg-base-200 rounded w-full font-mono whitespace-pre-wrap break-words"></div>
-      </div>
-
-      <div class="flex flex-col space-y-1 mb-4" id="remediation-wrapper">
-        <div class="flex items-center justify-between">
-          <label for="rapid7-remediation-project-name" class="label-text font-semibold">Rapid7 Remediation Project Name (80 char max)</label>
-          <button type="button" id="copy-remediation-name-btn" class="btn btn-xs btn-outline">COPY</button>
-        </div>
-        <input id="rapid7-remediation-project-name" type="text" class="input input-bordered w-full font-mono" maxlength="200" spellcheck="false" aria-describedby="remediation-char-count" autocomplete="off" autocorrect="off" autocapitalize="off" />
-        <p id="remediation-char-count" class="text-sm text-gray-600 mt-1">Characters: <span id="remediation-char-num">0</span>/80</p>
-      </div>
-
-      <div class="flex flex-col space-y-1 mb-4">
-        <div class="flex items-center justify-between">
-          <label for="description" class="label-text font-semibold">Description (formatted text)</label>
-          <button type="button" id="copy-description-html-btn" class="btn btn-xs btn-outline">Copy as formatted text</button>
-        </div>
-        <div id="description" class="p-2 bg-base-200 rounded w-full" contenteditable="false" style="min-height: 250px; background:#fff; border:1px solid #ccc; overflow:auto"></div>
       </div>
     </div>
-  </div>
-</div>
 
-<script>
-  // Helper to parse CVE IDs from input text safely (splits on comma/space, trims, removes trailing punctuation)
-  function parseCveIds(text) {
-    return text
-      .split(/[\s,]+/)
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-  }
+    <script>
+      // Helper to parse CVE IDs from input text safely (splits on comma/space, trims, removes trailing punctuation)
+      function parseCveIds(text) {
+        return text
+          .split(/[\s,]+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+      }
 
-  // CSV upload with PapaParse to extract 'Title', CVE IDs, and CVSS scores
-  document.getElementById('csv-upload').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
+      // CSV upload with PapaParse to extract 'Title', CVE IDs, and CVSS scores
+      document.getElementById("csv-upload").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        if (!results.data || results.data.length === 0) {
-          alert('CSV file is empty or not properly formatted.');
-          return;
-        }
-
-        // Extract vulnerability titles, CVE IDs, and CVSS scores
-        const extractedTitles = [];
-        const extractedCves = [];
-        const cveScoreMap = {};
-        results.data.forEach(row => {
-          let cveId = null;
-          if (row['Title']) {
-            extractedTitles.push(row['Title'].trim());
-            // Try to extract CVE from Title if present
-            const cveMatch = row['Title'].match(/CVE-\d{4}-\d{4,7}/i);
-            if (cveMatch) cveId = cveMatch[0].toUpperCase();
-          }
-          if (!cveId && row['Vulnerability Key']) {
-            const rawKey = row['Vulnerability Key'].toString().toLowerCase();
-            const cveMatch = rawKey.match(/cve-\d{4}-\d{4,7}/);
-            if (cveMatch) cveId = cveMatch[0].toUpperCase();
-          }
-          if (cveId) {
-            extractedCves.push(cveId);
-            // Store CVSS score if present
-            if (row['CVSS Score'] && !isNaN(parseFloat(row['CVSS Score']))) {
-              cveScoreMap[cveId] = parseFloat(row['CVSS Score']);
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function (results) {
+            if (!results.data || results.data.length === 0) {
+              alert("CSV file is empty or not properly formatted.");
+              return;
             }
-          }
-        });
 
-        const uniqueTitles = Array.from(new Set(extractedTitles));
-        const uniqueCves = Array.from(new Set(extractedCves));
-        if (uniqueTitles.length === 0 || uniqueCves.length === 0) {
-          alert('No valid vulnerability titles or CVE IDs found in the CSV.');
+            // Extract vulnerability titles, CVE IDs, and CVSS scores
+            const extractedTitles = [];
+            const extractedCves = [];
+            const cveScoreMap = {};
+            results.data.forEach((row) => {
+              let cveId = null;
+              if (row["Title"]) {
+                extractedTitles.push(row["Title"].trim());
+                // Try to extract CVE from Title if present
+                const cveMatch = row["Title"].match(/CVE-\d{4}-\d{4,7}/i);
+                if (cveMatch) cveId = cveMatch[0].toUpperCase();
+              }
+              if (!cveId && row["Vulnerability Key"]) {
+                const rawKey = row["Vulnerability Key"]
+                  .toString()
+                  .toLowerCase();
+                const cveMatch = rawKey.match(/cve-\d{4}-\d{4,7}/);
+                if (cveMatch) cveId = cveMatch[0].toUpperCase();
+              }
+              if (cveId) {
+                extractedCves.push(cveId);
+                // Store CVSS score if present
+                if (
+                  row["CVSS Score"] &&
+                  !isNaN(parseFloat(row["CVSS Score"]))
+                ) {
+                  cveScoreMap[cveId] = parseFloat(row["CVSS Score"]);
+                }
+              }
+            });
+
+            const uniqueTitles = Array.from(new Set(extractedTitles));
+            const uniqueCves = Array.from(new Set(extractedCves));
+            if (uniqueTitles.length === 0 || uniqueCves.length === 0) {
+              alert(
+                "No valid vulnerability titles or CVE IDs found in the CSV."
+              );
+              return;
+            }
+
+            window.vulnerabilityTitles = uniqueTitles;
+            window.cveScoreMap = cveScoreMap;
+            document.getElementById("cve-ids").value = uniqueCves.join(", ");
+            document.getElementById("multiple-cves").checked =
+              uniqueCves.length > 1;
+            scheduleGenerate();
+          },
+          error: function (err) {
+            alert("Error parsing CSV file: " + err);
+          },
+        });
+      });
+
+      // Fetch CVSS base score for a CVE ID from NVD API
+      async function fetchCveScore(cveId) {
+        const apiUrl = `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(
+          cveId
+        )}`;
+        try {
+          const resp = await fetch(apiUrl);
+          if (!resp.ok) throw new Error("Not found");
+          const data = await resp.json();
+          const vuln = data.vulnerabilities?.[0];
+          if (!vuln) return null;
+          const metrics = vuln.cve.metrics;
+          let baseScore = null;
+          if (metrics?.cvssMetricV31 && metrics.cvssMetricV31.length) {
+            baseScore = metrics.cvssMetricV31[0].cvssData.baseScore;
+          } else if (metrics?.cvssMetricV3 && metrics.cvssMetricV3.length) {
+            baseScore = metrics.cvssMetricV3[0].cvssData.baseScore;
+          } else if (metrics?.cvssMetricV2 && metrics.cvssMetricV2.length) {
+            baseScore = metrics.cvssMetricV2[0].cvssData.baseScore;
+          }
+          return baseScore;
+        } catch {
+          return null;
+        }
+      }
+
+      // Mapping functions
+      function mapScoreToRiskAbbr(score) {
+        if (score == null) return "Unknown";
+        if (score >= 9) return "Crit";
+        if (score >= 7) return "High";
+        if (score >= 4) return "Med";
+        if (score > 0) return "Low";
+        return "Low";
+      }
+      function mapRiskToUrgency(riskAbbr) {
+        switch (riskAbbr) {
+          case "Crit":
+            return "Emergency";
+          case "High":
+            return "High";
+          case "Med":
+            return "Medium";
+          case "Low":
+            return "Low";
+          default:
+            return "Unknown";
+        }
+      }
+      function mapRiskToDays(riskAbbr) {
+        switch (riskAbbr) {
+          case "Crit":
+            return 7;
+          case "High":
+            return 30;
+          case "Med":
+            return 60;
+          case "Low":
+            return 90;
+          default:
+            return 90;
+        }
+      }
+      function formatDateDDMM(date) {
+        const d = date.getDate().toString().padStart(2, "0");
+        const m = (date.getMonth() + 1).toString().padStart(2, "0");
+        return `${d}.${m}`;
+      }
+      function formatDueDate(daysToAdd) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        now.setDate(now.getDate() + daysToAdd);
+        return formatDateDDMM(now);
+      }
+
+      // DOM references
+      const cveInput = document.getElementById("cve-ids");
+      const multipleCheckbox = document.getElementById("multiple-cves");
+      const appNameInput = document.getElementById("app-name");
+      const vulnDescInput = document.getElementById("vuln-description");
+      const ivantiProblemInput = document.getElementById(
+        "ivanti-problem-number"
+      );
+      const ivantiSummaryEl = document.getElementById("ivanti-problem-summary");
+      const urgencyEl = document.getElementById("urgency");
+      const rapid7QueryEl = document.getElementById("rapid7-query-name");
+      const remediationNameInput = document.getElementById(
+        "rapid7-remediation-project-name"
+      );
+      const remediationCopyBtn = document.getElementById(
+        "copy-remediation-name-btn"
+      );
+      const remediationCharNum = document.getElementById(
+        "remediation-char-num"
+      );
+      const descriptionEl = document.getElementById("description");
+      const copyDescriptionHtmlBtn = document.getElementById(
+        "copy-description-html-btn"
+      );
+
+      // Copy buttons handlers
+      document.getElementById("copy-ivanti-summary-btn").onclick = () =>
+        copyToClipboard(ivantiSummaryEl.value);
+      document.getElementById("copy-query-btn").onclick = () =>
+        copyToClipboard(rapid7QueryEl.textContent);
+      remediationCopyBtn.onclick = () =>
+        copyToClipboard(remediationNameInput.value);
+      document.getElementById("copy-urgency-btn").onclick = () =>
+        copyToClipboard(urgencyEl.textContent);
+
+      function copyToClipboard(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+      }
+
+      // Copy description **as formatted rich text**
+      copyDescriptionHtmlBtn.onclick = () => {
+        if (!descriptionEl) return;
+        const range = document.createRange();
+        range.selectNodeContents(descriptionEl);
+        const selection = window.getSelection();
+        if (!selection) return;
+        selection.removeAllRanges();
+        selection.addRange(range);
+        try {
+          const successful = document.execCommand("copy");
+          if (successful) {
+            copyDescriptionHtmlBtn.textContent = "COPIED";
+            setTimeout(
+              () =>
+                (copyDescriptionHtmlBtn.textContent = "Copy as formatted text"),
+              1500
+            );
+          } else {
+            alert("Copy failed.");
+          }
+        } catch (e) {
+          alert("Copy error: " + e);
+        }
+        selection.removeAllRanges();
+      };
+
+      // Remediation project name char count and red highlight
+      remediationNameInput.addEventListener("input", () => {
+        const len = remediationNameInput.value.length;
+        remediationCharNum.textContent = len;
+        if (len > 80) remediationNameInput.classList.add("text-red-limit");
+        else remediationNameInput.classList.remove("text-red-limit");
+      });
+
+      // Debounce helper for auto generation
+      let debounceTimer;
+      function scheduleGenerate() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(generateAllText, 400);
+      }
+      [
+        cveInput,
+        multipleCheckbox,
+        appNameInput,
+        vulnDescInput,
+        ivantiProblemInput,
+      ].forEach((el) => {
+        el.addEventListener("input", scheduleGenerate);
+        el.addEventListener("change", scheduleGenerate);
+      });
+
+      // Main generation logic
+      async function generateAllText() {
+        ivantiSummaryEl.value = "";
+        urgencyEl.textContent = "";
+        rapid7QueryEl.textContent = "";
+        remediationNameInput.value = "";
+        remediationNameInput.classList.remove("text-red-limit");
+        remediationCharNum.textContent = "0";
+        descriptionEl.innerHTML = "";
+
+        const cveRaw = cveInput.value.trim();
+        const multipleCvesChecked = multipleCheckbox.checked;
+        const appName = appNameInput.value.trim();
+        const vulnDescription = vulnDescInput.value.trim();
+        const ivantiNum = ivantiProblemInput.value.trim();
+
+        if (!cveRaw || !appName) return;
+
+        let cves = parseCveIds(cveRaw);
+        if (cves.length === 0) {
+          alert("No valid CVE IDs found in input.");
           return;
         }
 
-        window.vulnerabilityTitles = uniqueTitles;
-        window.cveScoreMap = cveScoreMap;
-        document.getElementById('cve-ids').value = uniqueCves.join(', ');
-        document.getElementById('multiple-cves').checked = uniqueCves.length > 1;
-        scheduleGenerate();
-      },
-      error: function(err) {
-        alert('Error parsing CSV file: ' + err);
-      }
-    });
-  });
+        ivantiSummaryEl.value = "Fetching CVSS scores...";
+        urgencyEl.textContent = "";
+        rapid7QueryEl.textContent = "";
+        remediationNameInput.value = "";
+        descriptionEl.innerHTML = "";
 
-  // Fetch CVSS base score for a CVE ID from NVD API
-  async function fetchCveScore(cveId) {
-    const apiUrl = `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(cveId)}`;
-    try {
-      const resp = await fetch(apiUrl);
-      if (!resp.ok) throw new Error('Not found');
-      const data = await resp.json();
-      const vuln = data.vulnerabilities?.[0];
-      if (!vuln) return null;
-      const metrics = vuln.cve.metrics;
-      let baseScore = null;
-      if (metrics?.cvssMetricV31 && metrics.cvssMetricV31.length) {
-        baseScore = metrics.cvssMetricV31[0].cvssData.baseScore;
-      } else if (metrics?.cvssMetricV3 && metrics.cvssMetricV3.length) {
-        baseScore = metrics.cvssMetricV3[0].cvssData.baseScore;
-      } else if (metrics?.cvssMetricV2 && metrics.cvssMetricV2.length) {
-        baseScore = metrics.cvssMetricV2[0].cvssData.baseScore;
-      }
-      return baseScore;
-    } catch { return null; }
-  }
+        let highestScore = null,
+          highestIndex = -1;
+        let scores = new Array(cves.length).fill(null);
+        let useCsvScores =
+          typeof window.cveScoreMap === "object" && window.cveScoreMap !== null;
+        for (let i = 0; i < cves.length; ++i) {
+          let score = null;
+          if (useCsvScores && window.cveScoreMap[cves[i]] !== undefined) {
+            score = window.cveScoreMap[cves[i]];
+          } else {
+            score = await fetchCveScore(cves[i]);
+          }
+          scores[i] = score;
+          if (
+            score !== null &&
+            (highestScore === null || score > highestScore)
+          ) {
+            highestScore = score;
+            highestIndex = i;
+          }
+          if (score !== null && score >= 9) break; // early stop on critical
+        }
 
-  // Mapping functions
-  function mapScoreToRiskAbbr(score) {
-    if (score == null) return 'Unknown';
-    if (score >= 9) return 'Crit';
-    if (score >= 7) return 'High';
-    if (score >= 4) return 'Med';
-    if (score > 0) return 'Low';
-    return 'Low';
-  }
-  function mapRiskToUrgency(riskAbbr) {
-    switch (riskAbbr) {
-      case 'Crit': return 'Emergency';
-      case 'High': return 'High';
-      case 'Med': return 'Medium';
-      case 'Low': return 'Low';
-      default: return 'Unknown';
-    }
-  }
-  function mapRiskToDays(riskAbbr) {
-    switch (riskAbbr) {
-      case 'Crit': return 7;
-      case 'High': return 30;
-      case 'Med': return 60;
-      case 'Low': return 90;
-      default: return 90;
-    }
-  }
-  function formatDateDDMM(date) {
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    return `${d}.${m}`;
-  }
-  function formatDueDate(daysToAdd) {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    now.setDate(now.getDate() + daysToAdd);
-    return formatDateDDMM(now);
-  }
+        if (highestScore === null) {
+          alert("Could not fetch CVSS scores for given CVE IDs.");
+          ivantiSummaryEl.value = "";
+          return;
+        }
 
-  // DOM references
-  const cveInput = document.getElementById('cve-ids');
-  const multipleCheckbox = document.getElementById('multiple-cves');
-  const appNameInput = document.getElementById('app-name');
-  const vulnDescInput = document.getElementById('vuln-description');
-  const ivantiProblemInput = document.getElementById('ivanti-problem-number');
-  const ivantiSummaryEl = document.getElementById('ivanti-problem-summary');
-  const urgencyEl = document.getElementById('urgency');
-  const rapid7QueryEl = document.getElementById('rapid7-query-name');
-  const remediationNameInput = document.getElementById('rapid7-remediation-project-name');
-  const remediationCopyBtn = document.getElementById('copy-remediation-name-btn');
-  const remediationCharNum = document.getElementById('remediation-char-num');
-  const descriptionEl = document.getElementById('description');
-  const copyDescriptionHtmlBtn = document.getElementById('copy-description-html-btn');
+        const riskAbbr = mapScoreToRiskAbbr(highestScore);
+        const urgencyText = mapRiskToUrgency(riskAbbr);
+        const dueDate = formatDueDate(mapRiskToDays(riskAbbr));
 
-  // Copy buttons handlers
-  document.getElementById('copy-ivanti-summary-btn').onclick   = () => copyToClipboard(ivantiSummaryEl.value);
-  document.getElementById('copy-query-btn').onclick            = () => copyToClipboard(rapid7QueryEl.textContent);
-  remediationCopyBtn.onclick                                   = () => copyToClipboard(remediationNameInput.value);
-  document.getElementById('copy-urgency-btn').onclick          = () => copyToClipboard(urgencyEl.textContent);
+        let labelTextFull = appName + ":";
+        let labelTextRemediation = appName + ":";
+        if (vulnDescription) {
+          labelTextFull += " " + vulnDescription + " ";
+          labelTextRemediation += " " + vulnDescription + " ";
+        } else {
+          labelTextFull += " ";
+          labelTextRemediation += " ";
+        }
 
-  function copyToClipboard(text) {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-  }
+        const cveForName = cves[highestIndex];
 
-  // Copy description **as formatted rich text**
-  copyDescriptionHtmlBtn.onclick = () => {
-    if (!descriptionEl) return;
-    const range = document.createRange();
-    range.selectNodeContents(descriptionEl);
-    const selection = window.getSelection();
-    if (!selection) return;
-    selection.removeAllRanges();
-    selection.addRange(range);
-    try {
-      const successful = document.execCommand('copy');
-      if (successful) {
-        copyDescriptionHtmlBtn.textContent = 'COPIED';
-        setTimeout(() => (copyDescriptionHtmlBtn.textContent = 'Copy as formatted text'), 1500);
-      } else {
-        alert('Copy failed.');
-      }
-    } catch (e) {
-      alert('Copy error: ' + e);
-    }
-    selection.removeAllRanges();
-  };
+        let vulnerabilityTextFull = "";
+        if (multipleCvesChecked && cves.length > 1) {
+          vulnerabilityTextFull = `div. Vulnerabilities z.B. ${cveForName}`;
+        } else {
+          vulnerabilityTextFull = `Vulnerability ${cveForName}`;
+        }
 
-  // Remediation project name char count and red highlight
-  remediationNameInput.addEventListener('input', () => {
-    const len = remediationNameInput.value.length;
-    remediationCharNum.textContent = len;
-    if (len > 80) remediationNameInput.classList.add('text-red-limit');
-    else remediationNameInput.classList.remove('text-red-limit');
-  });
+        let vulnerabilityTextShort = "";
+        if (multipleCvesChecked && cves.length > 1) {
+          vulnerabilityTextShort = `div. Vulns. z.B. ${cveForName}`;
+        } else {
+          vulnerabilityTextShort = `Vuln. ${cveForName}`;
+        }
 
-  // Debounce helper for auto generation
-  let debounceTimer;
-  function scheduleGenerate() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(generateAllText, 400);
-  }
-  [cveInput, multipleCheckbox, appNameInput, vulnDescInput, ivantiProblemInput].forEach(el => {
-    el.addEventListener('input', scheduleGenerate);
-    el.addEventListener('change', scheduleGenerate);
-  });
+        const ivantiSummary = `[${riskAbbr}-${dueDate}]${labelTextFull}${vulnerabilityTextFull}`;
+        const rapid7Query = `[${riskAbbr}-${dueDate}]${labelTextFull}${vulnerabilityTextFull}`;
+        const remediationProjectField = `[${riskAbbr}-${dueDate}]${labelTextRemediation}${vulnerabilityTextShort}`;
+        const remediationName = ivantiNum
+          ? `${ivantiNum}P${remediationProjectField}`
+          : remediationProjectField;
 
-  // Main generation logic
-  async function generateAllText() {
-  ivantiSummaryEl.value = '';
-  urgencyEl.textContent = '';
-  rapid7QueryEl.textContent = '';
-  remediationNameInput.value = '';
-  remediationNameInput.classList.remove('text-red-limit');
-  remediationCharNum.textContent = '0';
-  descriptionEl.innerHTML = '';
+        ivantiSummaryEl.value = ivantiSummary;
+        urgencyEl.textContent = urgencyText;
+        rapid7QueryEl.textContent = rapid7Query;
+        remediationNameInput.value = remediationName;
+        remediationNameInput.dispatchEvent(new Event("input"));
 
-  const cveRaw = cveInput.value.trim();
-  const multipleCvesChecked = multipleCheckbox.checked;
-  const appName = appNameInput.value.trim();
-  const vulnDescription = vulnDescInput.value.trim();
-  const ivantiNum = ivantiProblemInput.value.trim();
+        let vulnListHtml;
+        if (
+          window.vulnerabilityTitles &&
+          window.vulnerabilityTitles.length > 0
+        ) {
+          vulnListHtml = window.vulnerabilityTitles
+            .map(
+              (title) =>
+                `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${title}</span>`
+            )
+            .join("<br>");
+        } else {
+          vulnListHtml = cves
+            .map(
+              (cve) =>
+                `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${cve}</span>`
+            )
+            .join("<br>");
+        }
 
-  if (!cveRaw || !appName) return;
-
-  let cves = parseCveIds(cveRaw);
-  if (cves.length === 0) {
-    alert('No valid CVE IDs found in input.');
-    return;
-  }
-
-  ivantiSummaryEl.value = 'Fetching CVSS scores...';
-  urgencyEl.textContent = '';
-  rapid7QueryEl.textContent = '';
-  remediationNameInput.value = '';
-  descriptionEl.innerHTML = '';
-
-  let highestScore = null, highestIndex = -1;
-  let scores = new Array(cves.length).fill(null);
-  let useCsvScores = typeof window.cveScoreMap === 'object' && window.cveScoreMap !== null;
-  for (let i = 0; i < cves.length; ++i) {
-    let score = null;
-    if (useCsvScores && window.cveScoreMap[cves[i]] !== undefined) {
-      score = window.cveScoreMap[cves[i]];
-    } else {
-      score = await fetchCveScore(cves[i]);
-    }
-    scores[i] = score;
-    if (score !== null && (highestScore === null || score > highestScore)) {
-      highestScore = score;
-      highestIndex = i;
-    }
-    if (score !== null && score >= 9) break;  // early stop on critical
-  }
-
-  if (highestScore === null) {
-    alert('Could not fetch CVSS scores for given CVE IDs.');
-    ivantiSummaryEl.value = '';
-    return;
-  }
-
-  const riskAbbr = mapScoreToRiskAbbr(highestScore);
-  const urgencyText = mapRiskToUrgency(riskAbbr);
-  const dueDate = formatDueDate(mapRiskToDays(riskAbbr));
-
-  let labelTextFull = appName + ':';
-  let labelTextRemediation = appName + ':';
-  if (vulnDescription) {
-    labelTextFull += ' ' + vulnDescription + ' ';
-    labelTextRemediation += ' ' + vulnDescription + ' ';
-  } else {
-    labelTextFull += ' ';
-    labelTextRemediation += ' ';
-  }
-
-  const cveForName = cves[highestIndex];
-
-  let vulnerabilityTextFull = '';
-  if (multipleCvesChecked && cves.length > 1) {
-    vulnerabilityTextFull = `div. Vulnerabilities z.B. ${cveForName}`;
-  } else {
-    vulnerabilityTextFull = `Vulnerability ${cveForName}`;
-  }
-
-  let vulnerabilityTextShort = '';
-  if (multipleCvesChecked && cves.length > 1) {
-    vulnerabilityTextShort = `div. Vulns. z.B. ${cveForName}`;
-  } else {
-    vulnerabilityTextShort = `Vuln. ${cveForName}`;
-  }
-
-  const ivantiSummary = `[${riskAbbr}-${dueDate}]${labelTextFull}${vulnerabilityTextFull}`;
-  const rapid7Query = `[${riskAbbr}-${dueDate}]${labelTextFull}${vulnerabilityTextFull}`;
-  const remediationProjectField = `[${riskAbbr}-${dueDate}]${labelTextRemediation}${vulnerabilityTextShort}`;
-  const remediationName = ivantiNum ? `${ivantiNum}P${remediationProjectField}` : remediationProjectField;
-
-  ivantiSummaryEl.value = ivantiSummary;
-  urgencyEl.textContent = urgencyText;
-  rapid7QueryEl.textContent = rapid7Query;
-  remediationNameInput.value = remediationName;
-  remediationNameInput.dispatchEvent(new Event('input'));
-
-  let vulnListHtml;
-  if (window.vulnerabilityTitles && window.vulnerabilityTitles.length > 0) {
-    vulnListHtml = window.vulnerabilityTitles
-      .map(title => `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${title}</span>`)
-      .join('<br>');
-  } else {
-    vulnListHtml = cves
-      .map(cve => `<span style="font-size:13.5pt;line-height:107%;color:#51626F">${cve}</span>`)
-      .join('<br>');
-  }
-
-  // Ensure the description HTML is set correctly
-  const descriptionHTML = `
+        // Ensure the description HTML is set correctly
+        const descriptionHTML = `
 <div class=WordSection1>
 <p class=MsoNormal><i><span style='font-size:13.5pt;line-height:107%;color:#51626F'>Im Rahmen des Schwachstellen Scans der Server sind die folgenden Schwachstellen erkannt worden.</span></i></p>
 <p class=MsoNormal>&nbsp;</p>
@@ -475,9 +694,9 @@
 <p class=MsoNormal><span style='font-size:10.0pt;line-height:107%;font-family:\"Arial\",sans-serif;color:#51626F'>YY:<br>Datum: Bis wann die Schwachstelle behoben sein muss.</span><span style='font-size:10.0pt;line-height:107%;font-family:\"Arial\",sans-serif'><br><br></span></p>
 </div>
 `;
-  descriptionEl.innerHTML = descriptionHTML;
-}
-generateAllText();
-</script>
-</body>
+        descriptionEl.innerHTML = descriptionHTML;
+      }
+      generateAllText();
+    </script>
+  </body>
 </html>
